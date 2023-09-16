@@ -1,12 +1,17 @@
 /**
  * @copyright Copyright (c) 2023
  * @file image_process.c
- * @author your name (you@domain.com)
- * @brief
+ * @author hhool (hhool.student@gmail.com)
+ * @brief image process plugin for vlc
  * @version 0.1
  * @date 2023-09-15
  */
 
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#else
+# define N_(str) (str)
+#endif
 
 #include <vlc_common.h>
 #include <vlc_plugin.h>
@@ -20,13 +25,14 @@ static int  Create      ( vlc_object_t * );
 static void Destroy     ( vlc_object_t * );
 
 static picture_t *Filter( filter_t *, picture_t * );
+static picture_t *CopyInfoAndRelease( picture_t *p_outpic, picture_t *p_inpic );
 
 /*****************************************************************************
  * Module descriptor
  *****************************************************************************/
 vlc_module_begin ()
     set_description( N_("Imgprocess video filter") )
-    set_shortname( N_("Color inversion" ))
+    set_shortname( N_("YUV Process" ))
     set_category( CAT_VIDEO )
     set_subcategory( SUBCAT_VIDEO_VFILTER )
     set_capability( "video filter", 0 )
@@ -35,9 +41,9 @@ vlc_module_begin ()
 vlc_module_end ()
 
 /*****************************************************************************
- * Create: allocates Invert video thread output method
+ * Create: allocates Img_process video thread output method
  *****************************************************************************
- * This function allocates and initializes a Invert vout method.
+ * This function allocates and initializes a Img_process vout method.
  *****************************************************************************/
 static int Create( vlc_object_t *p_this )
 {
@@ -59,9 +65,9 @@ static int Create( vlc_object_t *p_this )
 }
 
 /*****************************************************************************
- * Destroy: destroy Invert video thread output method
+ * Destroy: destroy Img_process video thread output method
  *****************************************************************************
- * Terminate an output method created by InvertCreateOutputMethod
+ * Terminate an output method created by Img_processCreateOutputMethod
  *****************************************************************************/
 static void Destroy( vlc_object_t *p_this )
 {
@@ -71,7 +77,7 @@ static void Destroy( vlc_object_t *p_this )
 /*****************************************************************************
  * Render: displays previously rendered output
  *****************************************************************************
- * This function send the currently rendered image to Invert image, waits
+ * This function send the currently rendered image to Img_process image, waits
  * until it is displayed and switch the two rendering buffers, preparing next
  * frame.
  *****************************************************************************/
@@ -92,7 +98,7 @@ static picture_t *Filter( filter_t *p_filter, picture_t *p_pic )
 
     if( p_pic->format.i_chroma == VLC_CODEC_YUVA )
     {
-        /* We don't want to invert the alpha plane */
+        /* We don't want to Img_process the alpha plane */
         i_planes = p_pic->i_planes - 1;
         memcpy(
             p_outpic->p[A_PLANE].p_pixels, p_pic->p[A_PLANE].p_pixels,
@@ -148,4 +154,16 @@ static picture_t *Filter( filter_t *p_filter, picture_t *p_pic )
     }
 
     return CopyInfoAndRelease( p_outpic, p_pic );
+}
+
+/*****************************************************************************
+ *
+ *****************************************************************************/
+static picture_t *CopyInfoAndRelease( picture_t *p_outpic, picture_t *p_inpic )
+{
+    picture_CopyProperties( p_outpic, p_inpic );
+
+    picture_Release( p_inpic );
+
+    return p_outpic;
 }
