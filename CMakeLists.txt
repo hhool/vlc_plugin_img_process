@@ -16,6 +16,8 @@ EXECUTE_PROCESS( COMMAND pkg-config --cflags vlc-plugin
                  COMMAND tr -d '\n'
                  OUTPUT_VARIABLE VLC_PLUGIN_CPP_FLAGS
 )
+MESSAGE( STATUS "VLC_PLUGINS_DIR: ${VLC_PLUGINS_DIR}" )
+MESSAGE( STATUS "VLC_PLUGIN_CPP_FLAGS: ${VLC_PLUGIN_CPP_FLAGS}" )
 
 SET( IMAGE_PROCESS_INSTALL_DIR "${VLC_PLUGINS_DIR}/video_filter" )
 
@@ -41,8 +43,14 @@ ENDIF()
 INCLUDE_DIRECTORIES( ${VLC_PLUGIN_INCLUDE_DIRS} "." )
 LINK_DIRECTORIES( ${VLC_PLUGIN_LIBRARY_DIRS} )
 
-ADD_LIBRARY( image_process_plugin SHARED image_process.c )
+ADD_LIBRARY( image_process_plugin SHARED image_process.c image_aamr.c image_aamr.h)
 SET_TARGET_PROPERTIES( image_process_plugin PROPERTIES COMPILE_FLAGS ${MODULE_CFLAGS_ALL} )
 TARGET_LINK_LIBRARIES( image_process_plugin ${VLC_PLUGIN_LIBRARIES}  "m" )
+if (WIN32)
+  TARGET_LINK_LIBRARIES( image_process_plugin "ws2_32" "kernel32")
+endif (WIN32)
+
+ADD_SUBDIRECTORY(aamr)
+INCLUDE_DIRECTORIES(aamr/include)
 
 INSTALL( TARGETS image_process_plugin DESTINATION ${IMAGE_PROCESS_INSTALL_DIR} )

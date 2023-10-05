@@ -17,7 +17,16 @@
 #include <vlc_plugin.h>
 #include <vlc_filter.h>
 #include <vlc_picture.h>
+#include "image_aamr.h"
 
+/*****************************************************************************
+ * AAMRInterface
+ *****************************************************************************/
+struct filter_sys_t
+{
+    AAMRInterface aamr_interface;
+    int fps;
+};
 /*****************************************************************************
  * Local prototypes
  *****************************************************************************/
@@ -25,7 +34,6 @@ static int  Create      ( vlc_object_t * );
 static void Destroy     ( vlc_object_t * );
 
 static picture_t *Filter( filter_t *, picture_t * );
-static picture_t *CopyInfoAndRelease( picture_t *p_outpic, picture_t *p_inpic );
 
 /*****************************************************************************
  * Module descriptor
@@ -51,16 +59,48 @@ static int Create( vlc_object_t *p_this )
     vlc_fourcc_t fourcc = p_filter->fmt_in.video.i_chroma;
 
     if( fourcc == VLC_CODEC_YUVP || fourcc == VLC_CODEC_RGBP
-     || fourcc == VLC_CODEC_RGBA || fourcc == VLC_CODEC_ARGB )
+     || fourcc == VLC_CODEC_RGBA || fourcc == VLC_CODEC_ARGB ) {
+        msg_Err( p_filter, "Img_process not needed" );
         return VLC_EGENERIC;
+     }
 
     const vlc_chroma_description_t *p_chroma =
         vlc_fourcc_GetChromaDescription( fourcc );
     if( p_chroma == NULL || p_chroma->plane_count == 0
-     || p_chroma->pixel_size * 8 != p_chroma->pixel_bits )
+     || p_chroma->pixel_size * 8 != p_chroma->pixel_bits ) {
+        msg_Err( p_filter, "Img_process not supported" );
         return VLC_EGENERIC;
-
+    }
+    p_filter->p_sys = malloc(sizeof(filter_sys_t));
+    if (p_filter->p_sys == NULL) {
+        msg_Err(p_filter, "malloc failed");
+        return VLC_EGENERIC;
+    }
+    if (LoadAAMRInterface(p_filter, &(p_filter->p_sys->aamr_interface)) != 0) {
+        msg_Err(p_filter, "LoadAAMRInterface failed");
+        free(p_filter->p_sys);
+        return VLC_EGENERIC;
+    }
     p_filter->pf_video_filter = Filter;
+    int ret = p_filter->p_sys->aamr_interface.init("123456", "123456", "123456", "123456", "123456");
+    if (ret < 0) {
+        msg_Err(p_filter, "AAMR_init failed");
+        filter_sys_t *p_sys = p_filter->p_sys;
+        UnloadAAMRInterface(p_filter, &(p_sys->aamr_interface));
+        free(p_filter->p_sys);
+        return VLC_EGENERIC;
+    }
+    msg_Dbg( p_filter, "Converting fps from %d/%d -> %d/%d",
+             p_filter->fmt_in.video.i_frame_rate_base,
+             p_filter->fmt_in.video.i_frame_rate,
+             p_filter->fmt_out.video.i_frame_rate_base,
+             p_filter->fmt_out.video.i_frame_rate );
+
+    p_filter->p_sys->fps = 25;
+    if (p_filter->fmt_in.video.i_frame_rate_base > 0) {
+        p_filter->p_sys->fps = p_filter->fmt_in.video.i_frame_rate
+            / (float)p_filter->fmt_in.video.i_frame_rate_base;
+    }
     return VLC_SUCCESS;
 }
 
@@ -71,7 +111,11 @@ static int Create( vlc_object_t *p_this )
  *****************************************************************************/
 static void Destroy( vlc_object_t *p_this )
 {
-    (void)p_this;
+    filter_t *p_filter = (filter_t *)p_this;
+    filter_sys_t *p_sys = p_filter->p_sys;
+    p_sys->aamr_interface.close();
+    UnloadAAMRInterface(p_filter, &(p_sys->aamr_interface));
+    free(p_sys);
 }
 
 /*****************************************************************************
@@ -84,7 +128,6 @@ static void Destroy( vlc_object_t *p_this )
 static picture_t *Filter( filter_t *p_filter, picture_t *p_pic )
 {
     picture_t *p_outpic;
-    int i_planes;
 
     if( !p_pic ) return NULL;
 
@@ -96,74 +139,33 @@ static picture_t *Filter( filter_t *p_filter, picture_t *p_pic )
         return NULL;
     }
 
+    filter_sys_t *p_sys = p_filter->p_sys;
     if( p_pic->format.i_chroma == VLC_CODEC_YUVA )
     {
         /* We don't want to Img_process the alpha plane */
-        i_planes = p_pic->i_planes - 1;
         memcpy(
             p_outpic->p[A_PLANE].p_pixels, p_pic->p[A_PLANE].p_pixels,
             p_pic->p[A_PLANE].i_pitch *  p_pic->p[A_PLANE].i_lines );
     }
-    else
-    {
-        i_planes = p_pic->i_planes;
-    }
 
-    for( int i_index = 0 ; i_index < i_planes ; i_index++ )
-    {
-        uint8_t *p_in, *p_in_end, *p_line_end, *p_out;
+    /* src yuv aamr process */
+    uint8_t* Y = p_pic->p[Y_PLANE].p_pixels;
+    uint8_t* U = p_pic->p[U_PLANE].p_pixels;
+    uint8_t* V = p_pic->p[V_PLANE].p_pixels;
+    int width = p_pic->p[Y_PLANE].i_visible_pitch;
+    int height = p_pic->p[Y_PLANE].i_visible_lines;
+    int stride = p_pic->p[Y_PLANE].i_pitch;
+    int QP = 0;
+    int fps = p_filter->p_sys->fps;
+    int version = 0;
+    p_sys->aamr_interface.dec(Y, U, V, width, height, stride, QP, fps, version);
 
-        p_in = p_pic->p[i_index].p_pixels;
-        p_in_end = p_in + p_pic->p[i_index].i_visible_lines
-                           * p_pic->p[i_index].i_pitch;
+    msg_Dbg( p_filter, "Y 0x%p U 0x%p V 0x%p width %d height %d stride %d fps %d",
+             Y, U, V, width, height, stride, fps);
 
-        p_out = p_outpic->p[i_index].p_pixels;
-
-        while( p_in < p_in_end )
-        {
-            uint64_t *p_in64, *p_out64;
-
-            p_line_end = p_in + p_pic->p[i_index].i_visible_pitch - 64;
-
-            p_in64 = (uint64_t*)p_in;
-            p_out64 = (uint64_t*)p_out;
-
-            while( p_in64 < (uint64_t *)p_line_end )
-            {
-                /* Do 64 pixels at a time */
-                *p_out64++ = ~*p_in64++; *p_out64++ = ~*p_in64++;
-                *p_out64++ = ~*p_in64++; *p_out64++ = ~*p_in64++;
-                *p_out64++ = ~*p_in64++; *p_out64++ = ~*p_in64++;
-                *p_out64++ = ~*p_in64++; *p_out64++ = ~*p_in64++;
-            }
-
-            p_in = (uint8_t*)p_in64;
-            p_out = (uint8_t*)p_out64;
-            p_line_end += 64;
-
-            while( p_in < p_line_end )
-            {
-                *p_out++ = ~( *p_in++ );
-            }
-
-            p_in += p_pic->p[i_index].i_pitch
-                     - p_pic->p[i_index].i_visible_pitch;
-            p_out += p_outpic->p[i_index].i_pitch
-                     - p_outpic->p[i_index].i_visible_pitch;
-        }
-    }
-
-    return CopyInfoAndRelease( p_outpic, p_pic );
-}
-
-/*****************************************************************************
- *
- *****************************************************************************/
-static picture_t *CopyInfoAndRelease( picture_t *p_outpic, picture_t *p_inpic )
-{
-    picture_CopyProperties( p_outpic, p_inpic );
-
-    picture_Release( p_inpic );
-
+    /* src yuv to dst yuv */
+    picture_Copy(p_outpic, p_pic);
+    picture_Release(p_pic);
     return p_outpic;
 }
+

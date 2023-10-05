@@ -3,7 +3,7 @@
 ## Get the source
 
 ```bash
-sudo git clone https://github.com/videolan/vlc.git
+git clone https://github.com/videolan/vlc.git
 cd vlc
 git checkout 3.0.18
 ```
@@ -55,7 +55,7 @@ export LD_LIBRARY_PATH=/usr/local/lib/:$LD_LIBRARY_PATH
 
 ```bash
 cd contrib/native
-sudo ../../bootstrap && sudo ../../configure && sudo ./compile -j4 && sudo make -j4 install
+../../bootstrap && ../../configure && ./compile -j4 && make -j4 install
 ```
 
 ```bash
@@ -117,7 +117,7 @@ export LD_LIBRARY_PATH=`pwd`/win64/_win32/lib/:$LD_LIBRARY_PATH
 ```bash
 git clone https://github.com/hhool/vlc_plugin_img_process.git
 cd vlc_plugin_img_process
-sudo cmake -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain.mingw32.cmake -S . -B out/build_x86_64_mingw32/
+cmake -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain.mingw32.cmake -S . -B out/build_x86_64_mingw32/
 cmake --build out/build_x86_64_mingw32/ -v
 cmake --build out/build_x86_64_mingw32/ --target install
 ```
