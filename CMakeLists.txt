@@ -27,7 +27,7 @@ SET( MODULE_CPPFLAGS
 )
 # vlc module C flags
 SET( MODULE_CFLAGS
-  "-std=gnu99 -fPIC -Wall"
+  "-std=gnu99 -fPIC -Wall -Wno-deprecated-declarations -Wno-unused-result"
 )
 # vlc module additional optimization C flags
 SET( MODULE_CFLAGS_OPTIMIZE
@@ -52,5 +52,7 @@ endif (WIN32)
 
 ADD_SUBDIRECTORY(aamr)
 INCLUDE_DIRECTORIES(aamr/include)
+ADD_SUBDIRECTORY(lic)
+INCLUDE_DIRECTORIES(lic/include)
 
 INSTALL( TARGETS image_process_plugin DESTINATION ${IMAGE_PROCESS_INSTALL_DIR} )
