@@ -95,7 +95,7 @@ void UnloadAAMRInterface(filter_t *p_filter, AAMRInterface *aamr_interface) {
     return;
   }
   if (aamr_interface->handle != NULL) {
-#ifdef LINUX
+#ifdef __linux__
     dlclose(aamr_interface->handle);
 #elif defined(WIN32)
     FreeLibrary(aamr_interface->handle);
