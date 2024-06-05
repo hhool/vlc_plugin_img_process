@@ -82,7 +82,15 @@ static int Create( vlc_object_t *p_this )
         return VLC_EGENERIC;
     }
     p_filter->pf_video_filter = Filter;
-    int ret = p_filter->p_sys->aamr_interface.init("123456", "123456", "123456", "123456",  "baijiayun.crt", NULL, NULL);
+    char crt_path[1024];
+    if (GetCrtFullPathName(crt_path, "baijiayun.crt") != 0) {
+        msg_Err(p_filter, "GetCrtFullPathName failed");
+        UnloadAAMRInterface(p_filter, &(p_filter->p_sys->aamr_interface));
+        free(p_filter->p_sys);
+        return VLC_EGENERIC;
+    }
+    msg_Dbg(p_filter, "crt_path %s", crt_path);
+    int ret = p_filter->p_sys->aamr_interface.init("123456", "123456", "123456", "123456",  crt_path, NULL, NULL);
     if (ret < 0) {
         msg_Err(p_filter, "AAMR_init failed");
         filter_sys_t *p_sys = p_filter->p_sys;

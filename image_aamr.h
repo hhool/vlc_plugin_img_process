@@ -40,6 +40,7 @@ int LoadAAMRInterface(filter_t* p_filter, AAMRInterface *aamr_interface);
 
 void UnloadAAMRInterface(filter_t* p_filter, AAMRInterface *aamr_interface);
 
+int GetCrtFullPathName(char path[1024], const char *crt_filename);
 #ifdef __cplusplus
 }
 #endif

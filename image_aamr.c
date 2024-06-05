@@ -106,3 +106,25 @@ void UnloadAAMRInterface(filter_t *p_filter, AAMRInterface *aamr_interface) {
   aamr_interface->close = NULL;
   aamr_interface->dec = NULL;
 }
+
+int GetCrtFullPathName(char path[1024], const char *crt_filename) {
+#if defined(WIN32)
+  if (!GetModuleFileName(NULL, path, MAX_PATH)) {
+    return -1;
+  }
+  TCHAR *lastDir = _tcsrchr(path, '\\');
+  if (!lastDir) {
+    return -1;
+  }
+  _tcscpy(lastDir + 1, TEXT(crt_filename));
+#elif defined(__linux__)
+  const char *local_path = getLocationPath();
+  strcpy(path, local_path);
+  char *lastDir = strrchr(path, '/');
+  if (!lastDir) {
+    return -1;
+  }
+  strncpy(lastDir + 1, crt_filename, 1024 - (lastDir - path));
+#endif
+  return 0;
+}
