@@ -18,7 +18,8 @@ extern "C" {
 #endif
 typedef int (*F_AAMR_INIT)(char * /*CustomerID*/, char * /*UserID*/,
                          char * /*CurTime*/, char * /*CustomerSig*/,
-                         char * /*certfile*/);
+                         char * /*certfile*/, char * /*GPU_Name*/,
+                         char* /*OpenCL_Driver*/);
 
 typedef void (*F_AAMR_CLOSE)();
 

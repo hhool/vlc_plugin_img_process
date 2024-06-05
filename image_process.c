@@ -82,7 +82,7 @@ static int Create( vlc_object_t *p_this )
         return VLC_EGENERIC;
     }
     p_filter->pf_video_filter = Filter;
-    int ret = p_filter->p_sys->aamr_interface.init("123456", "123456", "123456", "123456", "123456");
+    int ret = p_filter->p_sys->aamr_interface.init("123456", "123456", "123456", "123456",  "baijiayun.crt", NULL, NULL);
     if (ret < 0) {
         msg_Err(p_filter, "AAMR_init failed");
         filter_sys_t *p_sys = p_filter->p_sys;

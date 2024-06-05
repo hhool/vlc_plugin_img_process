@@ -10,7 +10,8 @@
 #include "aamr.h"
 
 AAMR_API int AAMR_init(char *CustomerID, char *UserID, char *CurTime,
-                       char *CustomerSig, char *certfile) {
+                       char *CustomerSig, char *certfile, char *GPU_Name,
+                       char *OpenCL_Driver) {
   return 0;
 }
 
