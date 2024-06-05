@@ -21,10 +21,11 @@
 #endif
 
 #if defined(__linux__)
-static const char *getLocationPath() {
+static void getLocationPath(char path[1024]) {
   Dl_info dl_info;
   dladdr((void *)getLocationPath, &dl_info);
-  return dl_info.dli_fname;
+  strncpy(path, dl_info.dli_fname, 1024);
+  return;
 }
 #endif
 
@@ -58,8 +59,7 @@ int LoadAAMRInterface(filter_t *p_filter, AAMRInterface *aamr_interface) {
       (F_AAMR_DEC)(void *)GetProcAddress(aamr_interface->handle, "AAMR_DEC");
 #elif __linux__
   char path[1024];
-  const char *local_path = getLocationPath();
-  strcpy(path, local_path);
+  getLocationPath(path);
   char *lastDir = strrchr(path, '/');
   if (!lastDir) {
     msg_Err(p_filter, "strrchr failed:%s", path);
@@ -118,8 +118,7 @@ int GetCrtFullPathName(char path[1024], const char *crt_filename) {
   }
   _tcscpy(lastDir + 1, TEXT(crt_filename));
 #elif defined(__linux__)
-  const char *local_path = getLocationPath();
-  strcpy(path, local_path);
+  getLocationPath(path);
   char *lastDir = strrchr(path, '/');
   if (!lastDir) {
     return -1;
